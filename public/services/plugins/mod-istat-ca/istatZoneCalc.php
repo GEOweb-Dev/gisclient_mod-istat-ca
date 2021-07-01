@@ -8,6 +8,38 @@ require_once ROOT_PATH . 'lib/GCService.php';
 $gcService = GCService::instance();
 $gcService->startSession();
 
+if (isset($_REQUEST['export'])) {
+    if ($_REQUEST['export'] == 'shp') {
+        $filenameBase = 'istatpolygon_'.date('YmdHi').rand(0,999);
+        $filenameXLS = GC_WEB_TMP_DIR.$filenameBase.'.csv';
+        $filenameSHP = GC_WEB_TMP_DIR.$filenameBase.'.shp';
+        $urlSHP = GC_WEB_TMP_URL.$filenameBase.'.zip';
+        $logFile = GC_WEB_TMP_DIR.$filenameBase.'.log';
+        $xlsContent = "gid;wkt\n1;" . $_REQUEST['sGeom'] . "\n";
+        file_put_contents($filenameXLS, $xlsContent);
+        $command = 'ogr2ogr -f "ESRI Shapefile" ' . $filenameSHP . ' -dialect sqlite -sql "SELECT gid, GeomFromText(WKT) as geom FROM '.$filenameBase.'" ' . $filenameXLS . ' -a_srs ' . $_REQUEST['srid'];
+        system($command.">$logFile 2>&1", $retVal);
+        if($retVal !== 0) {
+			 die(json_encode(array('result'=>'ko', 'message' => 'Errore in creazione Shapefile', 'file'=>$logFile)));
+		}
+
+        $zipSHP = new ZipArchive();
+        $filenameZip = GC_WEB_TMP_DIR.$filenameBase.'.zip';
+        if ($zipSHP->open($filenameZip, ZIPARCHIVE::CREATE) !== TRUE) {
+            die(json_encode(array('result'=>'ko', 'message' => 'Errore in creazione file ZIP')));
+        }
+        $zipSHP->addFile($filenameSHP, $filenameBase.'.shp');
+        $zipSHP->addFile(GC_WEB_TMP_DIR.$filenameBase.'.shx', $filenameBase.'.shx');
+        $zipSHP->addFile(GC_WEB_TMP_DIR.$filenameBase.'.dbf', $filenameBase.'.dbf');
+        $zipSHP->addFile(GC_WEB_TMP_DIR.$filenameBase.'.prj', $filenameBase.'.prj');
+        $zipSHP->close();
+
+        die(json_encode(array('result'=>'ok',command=>$command,'file'=>$urlSHP)));
+        ini_set('display_errors', 'On');
+        error_reporting(E_ALL);
+    }
+}
+
 $db = GCApp::getDB();
 
 $request = $_REQUEST;
