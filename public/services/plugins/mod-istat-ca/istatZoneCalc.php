@@ -34,7 +34,7 @@ if (isset($_REQUEST['export'])) {
         $zipSHP->addFile(GC_WEB_TMP_DIR.$filenameBase.'.prj', $filenameBase.'.prj');
         $zipSHP->close();
 
-        die(json_encode(array('result'=>'ok',command=>$command,'file'=>$urlSHP)));
+        die(json_encode(array('result'=>'ok','command'=>$command,'file'=>$urlSHP)));
         ini_set('display_errors', 'On');
         error_reporting(E_ALL);
     }
